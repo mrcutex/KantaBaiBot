@@ -1,10 +1,30 @@
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.types import Message
 import asyncio
+import threading
+import logging
 from aiohttp import web
+from flask import Flask
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Flask app for health check
+flask_app = Flask(__name__)
+
+@flask_app.route('/health')
+def health():
+    return 'OK', 200
+
+def run_server():
+    flask_app.run(host='0.0.0.0', port=8000)
+
+# Start Flask server in a separate thread
+threading.Thread(target=run_server, daemon=True).start()
 
 # Initialize the bot with your credentials
-app = Client(
+bot = Client(
     "unique_link_bot",
     api_id="10276529",
     api_hash="693b95dbf7fa563ee5bf1e9cb8f937f1",
@@ -18,7 +38,7 @@ user_links = {}
 group_id = "-1002252756157"
 original_link = "https://example.com/original"
 
-@app.on_message(filters.command("start") & filters.private)
+@bot.on_message(filters.command("start") & filters.private)
 async def start_command(client, message: Message):
     user_id = message.from_user.id
     
@@ -30,13 +50,13 @@ async def start_command(client, message: Message):
     await message.reply(f"Please join our group to proceed: https://t.me/{group_id}")
     await message.reply("After joining, type /verify to receive the original link.")
 
-@app.on_message(filters.command("verify") & filters.private)
+@bot.on_message(filters.command("verify") & filters.private)
 async def verify_command(client, message: Message):
     user_id = message.from_user.id
     
     # Check if the user has joined the group
     try:
-        member = await app.get_chat_member(group_id, user_id)
+        member = await bot.get_chat_member(group_id, user_id)
         if member.status in ["member", "administrator", "creator"]:
             # User is a member, send the original link
             await message.reply(f"Thank you for joining! Here’s your original link: {original_link}")
@@ -46,27 +66,15 @@ async def verify_command(client, message: Message):
         await message.reply("It seems you haven't joined the group yet. Please join and try again.")
         print(f"Error: {e}")
 
-# Health check endpoint
-async def health_check(request):
-    return web.Response(text="Bot is running")
-
-# Setup HTTP server for health checks
-async def start_health_server():
-    server = web.Application()
-    server.router.add_get("/health", health_check)
-    runner = web.AppRunner(server)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", 8080)
-    await site.start()
-    print("Health check server running on http://0.0.0.0:8080/health")
-
 # Main entry point to run bot and health check server concurrently
 async def main():
-    # Start bot and health server concurrently
-    bot_task = asyncio.create_task(app.start())
-    health_server_task = asyncio.create_task(start_health_server())
+    try:
+        await bot.start()
+        logger.info("Bot started...")        
+        await idle()
+    except KeyboardInterrupt:
+        await bot.stop()
+        logger.info("Bot stopped")
 
-    # Run both tasks until complete
-    await asyncio.gather(bot_task, health_server_task)
-
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
