@@ -2,3 +2,4 @@ TgCrypto
 pyrogram
 requests
 aiohttp
+Flask
