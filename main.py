@@ -60,11 +60,13 @@ async def start_health_server():
     await site.start()
     print("Health check server running on http://0.0.0.0:8080/health")
 
-# Start both bot and health server
+# Main entry point to run bot and health check server concurrently
 async def main():
-    await asyncio.gather(
-        app.start(),
-        start_health_server()
-    )
+    # Start bot and health server concurrently
+    bot_task = asyncio.create_task(app.start())
+    health_server_task = asyncio.create_task(start_health_server())
+
+    # Run both tasks until complete
+    await asyncio.gather(bot_task, health_server_task)
 
 asyncio.run(main())
