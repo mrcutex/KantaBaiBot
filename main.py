@@ -1,5 +1,6 @@
 from pyrogram import Client, filters, idle
 from pyrogram.types import Message
+from pyrogram.errors import FloodWait
 import asyncio
 import threading
 import logging
@@ -43,7 +44,7 @@ async def start_command(client, message: Message):
     
     # Generate a unique link for the user if not already generated
     if user_id not in user_links:
-        user_links[user_id] = f"https://t.me/KantaBaiBot?start={user_id}"
+        user_links[user_id] = f"https://t.me/{bot.username}?start={user_id}"
     
     # Send the group link to the user
     await message.reply(f"Please join our group to proceed: https://t.me/{group_id}")
@@ -61,9 +62,15 @@ async def verify_command(client, message: Message):
             await message.reply(f"Thank you for joining! Here’s your original link: {original_link}")
         else:
             await message.reply("You need to join the group to receive the link.")
+    except FloodWait as e:
+        # Handle flood wait by pausing the execution
+        logger.warning(f"Flood wait: Sleeping for {e.x} seconds.")
+        await asyncio.sleep(e.x)
+        # Retry after the sleep
+        await verify_command(client, message)
     except Exception as e:
+        logger.error(f"Error in verification: {e}")
         await message.reply("It seems you haven't joined the group yet. Please join and try again.")
-        print(f"Error: {e}")
 
 # Main entry point to run bot and health check server concurrently
 async def main():
