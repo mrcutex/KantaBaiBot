@@ -1,5 +1,3 @@
-logging
-os-sys
 TgCrypto
 pyrogram
 requests
