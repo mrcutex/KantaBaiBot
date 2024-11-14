@@ -3,7 +3,6 @@ from pyrogram.types import Message
 import asyncio
 import threading
 import logging
-from aiohttp import web
 from flask import Flask
 
 # Set up logging
@@ -77,4 +76,5 @@ async def main():
         logger.info("Bot stopped")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
