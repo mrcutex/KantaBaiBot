@@ -5,6 +5,7 @@ import asyncio
 import threading
 import logging
 from flask import Flask
+import random
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -31,59 +32,86 @@ bot = Client(
     bot_token="7409932510:AAFQ5ETpB4XQK3QH989zCvj5rmDLTLJeaZQ"
 )
 
-# Dictionary to store unique links and their respective users
-user_links = {}
+# Dictionary to store original links and unique start links
+original_links = []  # List to hold all original links
+link_mapping = {}     # Mapping of start links to original links
+user_links = {}       # Mapping of users to their unique links
 
-# Group ID and original link
+# Group ID and group join link
+OWNER_USER_ID = "7305252437"
 group_id = "-1002252756157"
-original_link = "https://example.com/original"
+group_join_link = "https://t.me/+_965RzDS4BUwZGU1"  # Group join link
+
+# Generate a unique start link for each original link
+def generate_start_link(user_id, link_index):
+    return f"https://t.me/KantaBaiBot?start={user_id}_{link_index}"
 
 @bot.on_message(filters.command("start") & filters.private)
 async def start_command(client, message: Message):
     user_id = message.from_user.id
+    start_link = message.text.split("start=")[1]  # Extract the unique start link parameter
     
-    # Generate a unique link for the user if not already generated
-    if user_id not in user_links:
-        user_links[user_id] = f"https://t.me/KantaBaiBot?start={user_id}"
-    
-    # Send the group link to the user
-    await message.reply(f"Please join our group to proceed: https://t.me/+_965RzDS4BUwZGU1")
-    await message.reply("After joining, type /verify to receive the original link.")
+    # If the user started with a valid unique link, map them to the original link
+    if start_link in link_mapping:
+        await message.reply(f"Please join our group to proceed: {group_join_link}")
+        await message.reply("After joining, type /verify to receive the original link.")
+    else:
+        await message.reply("Invalid start link. Please make sure you're using a valid link.")
 
 @bot.on_message(filters.command("verify") & filters.private)
 async def verify_command(client, message: Message):
     user_id = message.from_user.id
-    
+
+    # Check if the user has joined the group
     try:
-        # Check if the user is a member of the group
         member_info = await client.get_chat_member(group_id, user_id)
 
-        # If the user is already a member, provide the original link
+        # If the user is a member, provide a link from the mapping
         if member_info.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.MEMBER]:
-            await message.reply(f"Thank you for joining! Here’s your original link: {original_link}")
+            if user_id in user_links:
+                # Get the original link based on the user's start link
+                original_link = original_links[user_links[user_id]]
+                await message.reply(f"Thank you for joining! Here’s your original link: {original_link}")
+            else:
+                await message.reply("You need to start the bot with a valid unique link.")
         else:
-            # If the user is not in the group or not a member, notify them
-            user_status = member_info.status
-            await message.reply(f"You are {user_status}. You need to be a member to receive the link.")
-
+            await message.reply(f"You need to join the group to receive the link. Please join here: {group_join_link}")
     except UserNotParticipant:
-        # User has not joined the group yet
-        await message.reply("You need to join the group to receive the link.")
-    
+        await message.reply(f"You need to join the group to receive the link. Please join here: {group_join_link}")
     except PeerIdInvalid:
-        # This error occurs when Telegram doesn't recognize the user
         await message.reply("It seems you haven't interacted with the group yet. Please join and then try again.")
-    
     except FloodWait as e:
-        # Handle flood wait by pausing the execution
         logger.warning(f"Flood wait: Sleeping for {e.x} seconds.")
         await asyncio.sleep(e.x)
         await verify_command(client, message)
-
     except Exception as e:
-        # Log any other exceptions and notify the user
         logger.error(f"Error in verification: {e}")
         await message.reply("It seems something went wrong. Please try again later.")
+
+# Owner command to add new original link
+@bot.on_message(filters.command("addlink") & filters.private)
+async def add_link(client, message: Message):
+    # Only allow the owner to add new links
+    if message.from_user.id != OWNER_USER_ID:
+        await message.reply("You are not authorized to add new links.")
+        return
+
+    # Add the new link to the original links list
+    new_link = message.text.split(" ", 1)[1]  # Get the link after the command
+    original_links.append(new_link)
+    
+    # Generate unique start links for this new original link
+    link_index = len(original_links) - 1  # Get the index of the new link
+    for user_id in user_links:
+        user_links[user_id].append(generate_start_link(user_id, link_index))
+    
+    # Map the generated links to the original link
+    for user_id in user_links:
+        start_link = generate_start_link(user_id, link_index)
+        link_mapping[start_link] = new_link
+    
+    await message.reply(f"New original link added: {new_link}")
+    await message.reply(f"Generated unique start links for this link.")
 
 # Main entry point to run bot and health check server concurrently
 async def main():
