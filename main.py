@@ -44,7 +44,7 @@ async def start_command(client, message: Message):
     
     # Generate a unique link for the user if not already generated
     if user_id not in user_links:
-        user_links[user_id] = f"https://t.me/{bot.username}?start={user_id}"
+        user_links[user_id] = f"https://t.me/KantaBaiBot?start={user_id}"
     
     # Send the group link to the user
     await message.reply(f"Please join our group to proceed: https://t.me/{group_id}")
