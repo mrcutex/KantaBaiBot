@@ -38,7 +38,7 @@ link_mapping = {}     # Mapping of start links to original links
 user_links = {}       # Mapping of users to their unique links
 
 # Group ID and group join link
-OWNER_USER_ID = "7305252437"
+OWNER_USER_ID = "-1002252756157"
 group_id = "-1002252756157"
 group_join_link = "https://t.me/+_965RzDS4BUwZGU1"  # Group join link
 
