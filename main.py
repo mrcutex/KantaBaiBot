@@ -1,6 +1,6 @@
 from pyrogram import Client, filters, enums, idle
 from pyrogram.types import Message
-from pyrogram.errors import FloodWait, UserNotParticipant
+from pyrogram.errors import FloodWait, UserNotParticipant, PeerIdInvalid
 import asyncio
 import threading
 import logging
@@ -55,40 +55,31 @@ async def verify_command(client, message: Message):
     user_id = message.from_user.id
     
     try:
-        # Fetch the member's status in the group
+        # Check if the user is a member of the group
         member_info = await client.get_chat_member(group_id, user_id)
-        status = member_info.status
-        
-        # Determine the user's status
-        if status == enums.ChatMemberStatus.OWNER:
-            user_status = "Owner"
-        elif status == enums.ChatMemberStatus.ADMINISTRATOR:
-            user_status = "Admin"
-        elif status == enums.ChatMemberStatus.MEMBER:
-            user_status = "Member"
-        elif status == enums.ChatMemberStatus.RESTRICTED:
-            user_status = "Restricted"
-        elif status == enums.ChatMemberStatus.LEFT:
-            user_status = "Left"
-        elif status == enums.ChatMemberStatus.BANNED:
-            user_status = "Banned"
-        
-        # If user is a member, send the original link
-        if user_status in ["Admin", "Member"]:
+
+        # If the user is already a member, provide the original link
+        if member_info.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.MEMBER]:
             await message.reply(f"Thank you for joining! Here’s your original link: {original_link}")
         else:
-            await message.reply(f"You are {user_status}. You need to join the group to receive the link.")
-        
+            # If the user is not in the group or not a member, notify them
+            user_status = member_info.status
+            await message.reply(f"You are {user_status}. You need to be a member to receive the link.")
+
     except UserNotParticipant:
-        # Handle the case where the user is not in the group
-        await message.reply("You are not in the group. Please join the group to get the link.")
+        # User has not joined the group yet
+        await message.reply("You need to join the group to receive the link.")
+    
+    except PeerIdInvalid:
+        # This error occurs when Telegram doesn't recognize the user
+        await message.reply("It seems you haven't interacted with the group yet. Please join and then try again.")
     
     except FloodWait as e:
         # Handle flood wait by pausing the execution
         logger.warning(f"Flood wait: Sleeping for {e.x} seconds.")
         await asyncio.sleep(e.x)
         await verify_command(client, message)
-    
+
     except Exception as e:
         # Log any other exceptions and notify the user
         logger.error(f"Error in verification: {e}")
