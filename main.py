@@ -115,30 +115,29 @@ async def add_link(client, message: Message):
     link_index = len(original_links) - 1  # Get the index of the new link
     used_random_texts[link_index] = set()  # Set to keep track of used random texts
 
+    # Prepare the response to show generated links
+    generated_links_message = f"Generated unique start links for the new original link {new_link}:\n"
+
     for user_id in user_links:
-        # For each user, generate a new start link for the new original link
         # Ensure no repeat random text for this particular original link
         available_random_texts = list(set(random_texts) - used_random_texts[link_index])
         if available_random_texts:
             random_text = random.choice(available_random_texts)  # Select a random text from the available ones
-            new_start_link = generate_start_link(random_text, link_index)  # Use random text instead of user ID
+            new_start_link = f"https://t.me/KantaBaiBot?start={random_text}_{link_index}"  # Use random text and link index
             user_links[user_id].append(new_start_link)
             link_mapping[new_start_link] = new_link
 
             # Mark this random text as used for this link
             used_random_texts[link_index].add(random_text)
+            
+            # Add the new start link to the response message
+            generated_links_message += f"{random_text}: {new_start_link}\n"
         else:
             logger.warning(f"No more unique random texts available for link {new_link}")
 
-    # Send generated start links to the owner
-    owner_message = f"Generated unique start links for the new original link {new_link}:\n"
-    for user_id in user_links:
-        random_text = random.choice(random_texts)  # Random text for each user
-        start_links = ', '.join(user_links[user_id])
-        owner_message += f"User {random_text}: {start_links}\n"
-
+    # Send the final message with all generated links
     await message.reply(f"New original link added: {new_link}")
-    await message.reply(owner_message)
+    await message.reply(generated_links_message)
 
 # Main entry point to run bot and health check server concurrently
 async def main():
