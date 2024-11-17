@@ -89,6 +89,17 @@ async def verify_command(client, message: Message):
         await message.reply("It seems something went wrong. Please try again later.")
 
 # Owner command to add new original link
+import random
+
+# List of random texts you can use (you can customize this list)
+random_texts = [
+    "CoolUser123", "LuckyPlayer", "HappyExplorer", "MightyWarrior", "SpeedyGamer",
+    "DreamChaser", "TechGuru", "BoldAdventurer", "SilentHunter", "WildCard"
+]
+
+# Dictionary to store used random texts for each link
+used_random_texts = {}
+
 @bot.on_message(filters.command("addlink") & filters.private)
 async def add_link(client, message: Message):
     # Only allow the owner to add new links
@@ -99,20 +110,33 @@ async def add_link(client, message: Message):
     # Add the new link to the original links list
     new_link = message.text.split(" ", 1)[1]  # Get the link after the command
     original_links.append(new_link)
-    
-    # Generate unique start links for this new original link
+
+    # Initialize used random texts list for this link if not already initialized
     link_index = len(original_links) - 1  # Get the index of the new link
+    used_random_texts[link_index] = set()  # Set to keep track of used random texts
+
     for user_id in user_links:
         # For each user, generate a new start link for the new original link
-        new_start_link = generate_start_link(user_id, link_index)
-        user_links[user_id].append(new_start_link)
-        link_mapping[new_start_link] = new_link
-    
+        # Ensure no repeat random text for this particular original link
+        available_random_texts = list(set(random_texts) - used_random_texts[link_index])
+        if available_random_texts:
+            random_text = random.choice(available_random_texts)  # Select a random text from the available ones
+            new_start_link = generate_start_link(random_text, link_index)  # Use random text instead of user ID
+            user_links[user_id].append(new_start_link)
+            link_mapping[new_start_link] = new_link
+
+            # Mark this random text as used for this link
+            used_random_texts[link_index].add(random_text)
+        else:
+            logger.warning(f"No more unique random texts available for link {new_link}")
+
     # Send generated start links to the owner
-    owner_message = "Generated unique start links for the new original link:\n"
+    owner_message = f"Generated unique start links for the new original link {new_link}:\n"
     for user_id in user_links:
-        owner_message += f"User {user_id}: {', '.join(user_links[user_id])}\n"
-    
+        random_text = random.choice(random_texts)  # Random text for each user
+        start_links = ', '.join(user_links[user_id])
+        owner_message += f"User {random_text}: {start_links}\n"
+
     await message.reply(f"New original link added: {new_link}")
     await message.reply(owner_message)
 
