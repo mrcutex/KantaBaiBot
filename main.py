@@ -32,13 +32,13 @@ bot = Client(
     bot_token="7409932510:AAFQ5ETpB4XQK3QH989zCvj5rmDLTLJeaZQ"
 )
 
-# Dictionary to store original links and unique start links
+# Dictionary to store original links, unique start links, and user mappings
 original_links = []  # List to hold all original links
 link_mapping = {}     # Mapping of start links to original links
 user_links = {}       # Mapping of users to their unique links
 
 # Group ID and group join link
-OWNER_USER_ID = 7305252437
+OWNER_USER_ID = 7305252437  # Replace with your actual user ID
 group_id = "-1002252756157"
 group_join_link = "https://t.me/+_965RzDS4BUwZGU1"  # Group join link
 
@@ -103,15 +103,18 @@ async def add_link(client, message: Message):
     # Generate unique start links for this new original link
     link_index = len(original_links) - 1  # Get the index of the new link
     for user_id in user_links:
-        user_links[user_id].append(generate_start_link(user_id, link_index))
+        # For each user, generate a new start link for the new original link
+        new_start_link = generate_start_link(user_id, link_index)
+        user_links[user_id].append(new_start_link)
+        link_mapping[new_start_link] = new_link
     
-    # Map the generated links to the original link
+    # Send generated start links to the owner
+    owner_message = "Generated unique start links for the new original link:\n"
     for user_id in user_links:
-        start_link = generate_start_link(user_id, link_index)
-        link_mapping[start_link] = new_link
+        owner_message += f"User {user_id}: {', '.join(user_links[user_id])}\n"
     
     await message.reply(f"New original link added: {new_link}")
-    await message.reply(f"Generated unique start links for this link.")
+    await message.reply(owner_message)
 
 # Main entry point to run bot and health check server concurrently
 async def main():
