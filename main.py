@@ -88,9 +88,6 @@ async def verify_command(client, message: Message):
         logger.error(f"Error in verification: {e}")
         await message.reply("It seems something went wrong. Please try again later.")
 
-# Owner command to add new original link
-import random
-
 # List of random texts you can use (you can customize this list)
 random_texts = [
     "CoolUser123", "LuckyPlayer", "HappyExplorer", "MightyWarrior", "SpeedyGamer",
@@ -113,31 +110,24 @@ async def add_link(client, message: Message):
 
     # Initialize used random texts list for this link if not already initialized
     link_index = len(original_links) - 1  # Get the index of the new link
-    used_random_texts[link_index] = set()  # Set to keep track of used random texts
+    if link_index not in used_random_texts:
+        used_random_texts[link_index] = set()  # Set to keep track of used random texts for this link
 
-    # Prepare the response to show generated links
-    generated_links_message = f"Generated unique start links for the new original link {new_link}:\n"
+    # Generate unique start link for this new original link
+    available_random_texts = list(set(random_texts) - used_random_texts[link_index])
+    if available_random_texts:
+        random_text = random.choice(available_random_texts)  # Select a random text from the available ones
+        new_start_link = f"https://t.me/KantaBaiBot?start={random_text}_{link_index}"  # Unique start link
+        link_mapping[new_start_link] = new_link
 
-    for user_id in user_links:
-        # Ensure no repeat random text for this particular original link
-        available_random_texts = list(set(random_texts) - used_random_texts[link_index])
-        if available_random_texts:
-            random_text = random.choice(available_random_texts)  # Select a random text from the available ones
-            new_start_link = f"https://t.me/KantaBaiBot?start={random_text}_{link_index}"  # Use random text and link index
-            user_links[user_id].append(new_start_link)
-            link_mapping[new_start_link] = new_link
-
-            # Mark this random text as used for this link
-            used_random_texts[link_index].add(random_text)
-            
-            # Add the new start link to the response message
-            generated_links_message += f"{random_text}: {new_start_link}\n"
-        else:
-            logger.warning(f"No more unique random texts available for link {new_link}")
-
-    # Send the final message with all generated links
-    await message.reply(f"New original link added: {new_link}")
-    await message.reply(generated_links_message)
+        # Mark this random text as used for this link
+        used_random_texts[link_index].add(random_text)
+        
+        # Send the new start link to the owner
+        await message.reply(f"New original link added: {new_link}")
+        await message.reply(f"Generated unique start link for the new original link:\n{new_start_link}")
+    else:
+        await message.reply(f"No more unique random texts available for this link.")
 
 # Main entry point to run bot and health check server concurrently
 async def main():
