@@ -1,11 +1,11 @@
-import random
+from pyrogram import Client, filters, enums, idle
+from pyrogram.types import Message
+from pyrogram.errors import FloodWait, UserNotParticipant, PeerIdInvalid
 import asyncio
 import threading
 import logging
 from flask import Flask
-from pyrogram import Client, filters, enums, idle
-from pyrogram.types import Message
-from pyrogram.errors import FloodWait, UserNotParticipant, PeerIdInvalid
+import random
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -50,10 +50,10 @@ def generate_start_link(user_id, link_index):
 async def start_command(client, message: Message):
     user_id = message.from_user.id
     try:
-        # Check if the message contains a valid start link
+        # Check if the message text contains the "start=" parameter
         if "start=" in message.text:
             start_link = message.text.split("start=")[1]  # Extract the unique start link parameter
-
+            
             # If the user started with a valid unique link, map them to the original link
             if start_link in link_mapping:
                 await message.reply(f"Please join our group to proceed: {group_join_link}")
@@ -62,11 +62,9 @@ async def start_command(client, message: Message):
                 await message.reply("Invalid start link. Please make sure you're using a valid link.")
         else:
             await message.reply("Invalid command format. Please ensure you're using the correct start link.")
-    except IndexError:
-        await message.reply("It seems there was an issue with the start link format. Please try again.")
     except Exception as e:
         logger.error(f"Error in start command: {e}")
-        await message.reply("An error occurred while processing your request.")
+        await message.reply("An error occurred while processing your request. Please try again later.")
 
 @bot.on_message(filters.command("verify") & filters.private)
 async def verify_command(client, message: Message):
