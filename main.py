@@ -1,6 +1,6 @@
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters, enums, idle
 from pyrogram.types import Message
-from pyrogram.errors import FloodWait
+from pyrogram.errors import FloodWait, UserNotParticipant
 import asyncio
 import threading
 import logging
@@ -47,30 +47,52 @@ async def start_command(client, message: Message):
         user_links[user_id] = f"https://t.me/KantaBaiBot?start={user_id}"
     
     # Send the group link to the user
-    await message.reply(f"Please join our group to proceed: https://t.me/{group_id}")
+    await message.reply(f"Please join our group to proceed: https://t.me/+_965RzDS4BUwZGU1")
     await message.reply("After joining, type /verify to receive the original link.")
 
 @bot.on_message(filters.command("verify") & filters.private)
 async def verify_command(client, message: Message):
     user_id = message.from_user.id
     
-    # Check if the user has joined the group
     try:
-        member = await bot.get_chat_member(group_id, user_id)
-        if member.status in ["member", "administrator", "creator"]:
-            # User is a member, send the original link
+        # Fetch the member's status in the group
+        member_info = await client.get_chat_member(group_id, user_id)
+        status = member_info.status
+        
+        # Determine the user's status
+        if status == enums.ChatMemberStatus.OWNER:
+            user_status = "Owner"
+        elif status == enums.ChatMemberStatus.ADMINISTRATOR:
+            user_status = "Admin"
+        elif status == enums.ChatMemberStatus.MEMBER:
+            user_status = "Member"
+        elif status == enums.ChatMemberStatus.RESTRICTED:
+            user_status = "Restricted"
+        elif status == enums.ChatMemberStatus.LEFT:
+            user_status = "Left"
+        elif status == enums.ChatMemberStatus.BANNED:
+            user_status = "Banned"
+        
+        # If user is a member, send the original link
+        if user_status in ["Admin", "Member"]:
             await message.reply(f"Thank you for joining! Here’s your original link: {original_link}")
         else:
-            await message.reply("You need to join the group to receive the link.")
+            await message.reply(f"You are {user_status}. You need to join the group to receive the link.")
+        
+    except UserNotParticipant:
+        # Handle the case where the user is not in the group
+        await message.reply("You are not in the group. Please join the group to get the link.")
+    
     except FloodWait as e:
         # Handle flood wait by pausing the execution
         logger.warning(f"Flood wait: Sleeping for {e.x} seconds.")
         await asyncio.sleep(e.x)
-        # Retry after the sleep
         await verify_command(client, message)
+    
     except Exception as e:
+        # Log any other exceptions and notify the user
         logger.error(f"Error in verification: {e}")
-        await message.reply("It seems you haven't joined the group yet. Please join and try again.")
+        await message.reply("It seems something went wrong. Please try again later.")
 
 # Main entry point to run bot and health check server concurrently
 async def main():
